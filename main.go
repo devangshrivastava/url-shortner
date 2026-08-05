@@ -11,7 +11,11 @@ import (
 func main() {
 	r := gin.Default()
 
-	urlRepo := repository.NewMemoryURLRepository()
+	// urlRepo := repository.NewMemoryURLRepository()
+	urlRepo, err := repository.NewSQLiteURLRepository("urls.db")
+	if err != nil {
+		panic(err)
+	}
 	urlService := service.NewURLService(urlRepo)
 	urlHandler := handler.NewURLHandler(urlService)
 
