@@ -1,5 +1,6 @@
 package model
 
+
 type Click struct {
 	Code      string `json:"code"`
 	IP        string `json:"ip"`
