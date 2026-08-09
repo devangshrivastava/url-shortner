@@ -85,3 +85,11 @@ func (h *URLHandler) RedirectURL(c *gin.Context) {
 
 	c.Redirect(http.StatusFound, longURL)
 }
+
+func (h *URLHandler) GetAnalytics(c *gin.Context) {
+	code := c.Param("code")
+
+	analytics := h.service.Analytics(code)
+
+	c.JSON(http.StatusOK, analytics)
+}
