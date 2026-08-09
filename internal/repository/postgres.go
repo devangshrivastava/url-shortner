@@ -4,14 +4,34 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"url-shortener/internal/model"
 )
 
 type PostgresURLRepository struct {
 	db *pgxpool.Pool
+}
+
+func InitializePostgresSchema(ctx context.Context, db *pgxpool.Pool) error {
+	_, err := db.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS urls (
+			code TEXT PRIMARY KEY,
+			long_url TEXT NOT NULL,
+			expires_at TEXT
+		);
+
+		CREATE TABLE IF NOT EXISTS clicks (
+			id BIGSERIAL PRIMARY KEY,
+			code TEXT NOT NULL,
+			clicked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			ip TEXT,
+			user_agent TEXT,
+			referer TEXT
+		);
+	`)
+	return err
 }
 
 func NewPostgresURLRepository(db *pgxpool.Pool) *PostgresURLRepository {
@@ -129,7 +149,7 @@ func (r *PostgresURLRepository) GetAnalytics(
 
 	recentQuery := `
 		SELECT
-			clicked_at,
+			to_char(clicked_at, 'YYYY-MM-DD"T"HH24:MI:SS.USOF'),
 			ip,
 			user_agent,
 			referer
