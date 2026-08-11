@@ -13,8 +13,11 @@ import (
 	"github.com/joho/godotenv"
 
 	"url-shortener/internal/handler"
+	"url-shortener/internal/middleware"
 	"url-shortener/internal/repository"
 	"url-shortener/internal/service"
+
+	"github.com/gin-contrib/cors"
 )
 
 func main() {
@@ -22,6 +25,13 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found, using system environment variables")
+	}
+
+	// Create the JWT service during startup so a missing JWT_SECRET fails
+	// clearly before the server starts.
+	jwtService, err := service.NewJWTServiceFromEnv()
+	if err != nil {
+		log.Fatal("failed to configure JWT service:", err)
 	}
 
 	// Read PostgreSQL connection URL
@@ -62,14 +72,40 @@ func main() {
 	urlRepo := repository.NewPostgresURLRepository(db)
 	urlService := service.NewURLService(urlRepo)
 	urlHandler := handler.NewURLHandler(urlService)
+	userRepo := repository.NewPostgresUserRepository(db)
+	authService := service.NewAuthService(userRepo)
+	authHandler := handler.NewAuthHandler(authService, jwtService)
+	authMiddleware := middleware.NewAuthMiddleware(jwtService)
 
 	// Gin router
 	r := gin.Default()
 
-	r.POST("/shorten", urlHandler.ShortenURL)
-	r.GET("/:code", urlHandler.RedirectURL)
-	r.GET("/analytics/:code", urlHandler.GetAnalytics)
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:5173",
+		},
+		AllowMethods: []string{
+			"GET",
+			"POST",
+			"OPTIONS",
+		},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+		},
+	}))
+	r.POST("/auth/signup", authHandler.Signup)
+	r.POST("/auth/login", authHandler.Login)
 
+	protected := r.Group("/")
+	protected.Use(authMiddleware.RequireAuth())
+	protected.POST("/shorten", urlHandler.ShortenURL)
+	protected.GET("/me/urls", urlHandler.ListMyURLs)
+	protected.GET("/analytics/:code", urlHandler.GetAnalytics)
+	protected.PATCH("/links/:code", urlHandler.UpdateURL)
+	protected.DELETE("/links/:code", urlHandler.DeleteURL)
+
+	r.GET("/:code", urlHandler.RedirectURL)
 	// Start server
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
