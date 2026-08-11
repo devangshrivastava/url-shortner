@@ -1,23 +1,36 @@
-const API_BASE_URL = "http://localhost:8080";
+import { apiRequest } from "./client";
 
-export async function shortenUrl({ url, customCode, expiresAt }) {
-  const response = await fetch(`${API_BASE_URL}/shorten`, {
+export function shortenUrl({ url, customCode, expiresAt }, token) {
+  return apiRequest("/shorten", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    token,
+    body: {
       url,
       custom_code: customCode,
       expires_at: expiresAt,
-    }),
+    },
   });
+}
 
-  const data = await response.json().catch(() => ({}));
+export function getMyURLs(token) {
+  return apiRequest("/me/urls", { token });
+}
 
-  if (!response.ok) {
-    throw new Error(data.error || "Unable to shorten this URL.");
-  }
+export function getAnalytics(code, token) {
+  return apiRequest(`/analytics/${encodeURIComponent(code)}`, { token });
+}
 
-  return data;
+export function updateURL(code, changes, token) {
+  return apiRequest(`/links/${encodeURIComponent(code)}`, {
+    method: "PATCH",
+    token,
+    body: changes,
+  });
+}
+
+export function deleteURL(code, token) {
+  return apiRequest(`/links/${encodeURIComponent(code)}`, {
+    method: "DELETE",
+    token,
+  });
 }

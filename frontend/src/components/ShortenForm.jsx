@@ -9,7 +9,7 @@ function toRFC3339(datetimeLocalValue) {
   return new Date(datetimeLocalValue).toISOString();
 }
 
-export default function ShortenForm({ onSuccess }) {
+export default function ShortenForm({ token, onSuccess, onUnauthorized }) {
   const [url, setUrl] = useState("");
   const [customCode, setCustomCode] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
@@ -26,10 +26,15 @@ export default function ShortenForm({ onSuccess }) {
         url,
         customCode,
         expiresAt: toRFC3339(expiresAt),
-      });
+      }, token);
 
       onSuccess(result);
     } catch (requestError) {
+      if (requestError.status === 401) {
+        onUnauthorized();
+        return;
+      }
+
       setError(requestError.message);
     } finally {
       setLoading(false);

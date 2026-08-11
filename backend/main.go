@@ -87,11 +87,14 @@ func main() {
 		AllowMethods: []string{
 			"GET",
 			"POST",
+			"PATCH",
+			"DELETE",
 			"OPTIONS",
 		},
 		AllowHeaders: []string{
 			"Origin",
 			"Content-Type",
+			"Authorization",
 		},
 	}))
 	r.POST("/auth/signup", authHandler.Signup)
